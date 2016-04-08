@@ -32,8 +32,7 @@ poller = select.poll()
 #register server socket
 poller.register(server, READ_ONLY)
 
-while Ture:
-    print "poll start......"
+while True:
     events = poller.poll(TIMEOUT)
 
     for fd, flag in events:
@@ -41,28 +40,26 @@ while Ture:
 
         # handle inputs
         if flag & (select.POLLPRI | select.POLLIN):
-            if s is server: # new connection need to be accepted
+            if s is server:  # new connection need to be accepted
                 connection, client_address = s.accept()
-                print "{} connected.".format(client_address)
+                print "A new connection is coming...", client_address
                 connection.setblocking(0)
-                fd_to_socket[connection.fileno()] = s
-                poller.register(s, READ_ONLY)
+                fd_to_socket[connection.fileno()] = connection
+                poller.register(connection, READ_ONLY)
                 message_queues[connection] = Queue.Queue()
 
             else:
-                data = recv(1024)
+                data = s.recv(1024)
                 if data:
-                    print "recieved data '{}' from '{}'".format(data, s.getpeername())
-                    message_queues[s].push(data)
+                    print "recieved data '{}' from {}".format(data, s.getpeername())
+                    message_queues[s].put(data)
                     poller.modify(s, READ_WRITE)
-                else:  #no data
-                    print "{} close".format(s.getpeername())
+                else:  # no data
+                    print "{} is closing...".format(s.getpeername())
                     del message_queues[s]
                     poller.unregister(s)
                     s.close()
 
-
-        # The POLLHUP flag indicates a client that “hung up” the connection without closing it cleanly.                     
         elif flag & select.POLLHUP:
             # Client hung up
             print 'closing {} after receiving HUP'.format(s.getpeername())
@@ -79,9 +76,9 @@ while Ture:
             else:
                 print "sending data '{}' to {}".format(next_msg, s.getpeername())
                 s.send(next_msg)
-        
+
         # handle error
-        elif FLAG & select.POLLERR:
+        elif flag & select.POLLERR:
             print "handling exceptional condition for {}".format(s.getpeername())
             poller.unregister(s)
             s.close()

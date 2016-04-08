@@ -2,7 +2,6 @@
 
 import select
 import socket
-import sys
 import Queue
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -22,9 +21,9 @@ outputs = []
 message_queues = {}
 
 while inputs:
-    print "new select begins......"
-    timeout = 5
-    readable, writable, exceptional = select.select(inputs, outputs, inputs, timeout)
+    TIMEOUT = 5
+    readable, writable, exceptional = select.select(inputs, outputs, inputs, TIMEOUT)
+
     # timeout
     if not (readable or writable or exceptional):
         print "select timeout."
@@ -33,10 +32,10 @@ while inputs:
     for sock in readable:
         if sock is server:   # new connection comes
             connection, client_address = sock.accept()
-            print "new connection({})".format(client_address)
+            print "A new connection is coming ...", client_address
             connection.setblocking(0)
             inputs.append(connection)
-            # set a queue for the new one
+            # set a queue for the new connection
             message_queues[connection] = Queue.Queue()
 
         else:
@@ -62,7 +61,7 @@ while inputs:
             print "the output queue is empty"
             outputs.remove(sock)
         else:
-            print "sending '{}' to '{}'".format(next_message, sock.getpeername())
+            print "sending '{}' to {}".format(next_message, sock.getpeername())
             sock.send(next_message)
 
     # hendle the exception
